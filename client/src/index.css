@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+
+.scrolled::-webkit-scrollbar {
+  display: none;
+}
+.cross:hover .icon {
+  opacity: 1;
+  transition: all 0.3s;
+}
+@tailwind utilities;
+
