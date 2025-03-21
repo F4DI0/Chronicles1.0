@@ -1,101 +1,116 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RxCross2 } from "react-icons/rx";
-import { useDarkMode } from "../context/DarkModeContext"; // ✅ Import Dark Mode Context
+import { useDarkMode } from "../context/DarkModeContext"; // Import Dark Mode Context
+import { useUser } from "../context/userContext"; // Import UserContext to get the current user
+import LoadingSpinner from "../components/LoadingSpinner"; // Import Loading Spinner
 
 function Recent() {
   const navigate = useNavigate();
-  const { darkMode } = useDarkMode(); // ✅ Use Dark Mode State
+  const { darkMode } = useDarkMode(); // Use Dark Mode State
+  const { user: currentUser } = useUser(); // Get the currently signed-in user
+  const [accounts, setAccounts] = useState([]); // State to store fetched accounts
+  const [loading, setLoading] = useState(true); // Loading state
 
-  const request = [
-    {
-      id: 43128188132,
-      name: "Violet Moore",
-      img: "https://images.unsplash.com/photo-1635107510862-53886e926b74?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=735&q=80",
-    },
-    {
-      id: 174119235182,
-      name: "Beatrice Soto",
-      img: "https://images.unsplash.com/photo-1635107510862-53886e926b74?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=735&q=80",
-    },
-    {
-      id: 13242143,
-      name: "Mittie Steele",
-      img: "https://images.unsplash.com/photo-1635107510862-53886e926b74?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=735&q=80",
-    },
-    {
-      id: 171544119,
-      name: "Herbert McLaughlin",
-      img: "https://images.unsplash.com/photo-1635107510862-53886e926b74?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=735&q=80",
-    },
-    {
-      id: 55191,
-      name: "Martha Parker",
-      img: "https://images.unsplash.com/photo-1635107510862-53886e926b74?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=735&q=80",
-    },
-    {
-      id: 922494,
-      name: "Kyle Young",
-      img: "https://images.unsplash.com/photo-1635107510862-53886e926b74?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=735&q=80",
-    },
-  ];
+  // Fetch all accounts from the backend
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/users/allusers", {
+          credentials: "include", // Include cookies for session-based auth
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Filter out the currently signed-in user
+          const filteredAccounts = data.filter(
+            (account) => account._id !== currentUser?._id
+          );
+          setAccounts(filteredAccounts); // Store filtered accounts in state
+        } else {
+          console.error("Failed to fetch accounts");
+        }
+      } catch (error) {
+        console.error("Error fetching accounts:", error);
+      } finally {
+        setLoading(false); // Set loading to false after fetching
+      }
+    };
+
+    fetchAccounts();
+  }, [currentUser?._id]); // Re-fetch if the current user changes
+
+  if (loading) {
+    return <LoadingSpinner />; // Show loading spinner while fetching data
+  }
 
   return (
     <div
       className={`w-3/4 my-5 shadow-md rounded-3xl overflow-hidden relative hidden lg:flex items-center justify-center flex-col transition-all duration-300 ${
         darkMode
-          ? "bg-black/20 text-white" // ✅ Dark Mode (Original Styling)
-          : "bg-warmBeige text-warmText border border-warmBrown" // ✅ Light Mode (Beige & Brown)
+          ? "bg-black/20 text-white" // Dark Mode (Original Styling)
+          : "bg-warmBeige text-warmText border border-warmBrown" // Light Mode (Beige & Brown)
       }`}
     >
       <span
-        className={`w-full px-5 font-bold text-xl flex items-center justify-start overflow-y-auto my-2 ${
+        className={`w-full px-5 font-bold text-xl flex items-center justify-start my-4 ${
           darkMode ? "text-white" : "text-warmBrown"
         }`}
       >
-        Top Writers
+        Suggested Writers
       </span>
 
-      {request.map((item) => {
-        return (
-          <div key={item.id} className="w-full px-5">
-            <span
-              className={`w-full h-16 rounded-lg shadow-lg my-2 flex items-start justify-center flex-col transition-all duration-300 ${
-                darkMode ? "bg-[#05141D]" : "bg-warmBrown text-warmBeige"
-              }`}
-            >
-              <span className="w-full flex items-center justify-evenly p-1 relative">
+      {/* Scrollable List */}
+      <div className="w-full h-64 overflow-y-auto px-5">
+        {accounts.map((account) => (
+          <div
+            key={account._id}
+            className={`w-full rounded-lg shadow-lg my-2 p-3 transition-all duration-300 ${
+              darkMode ? "bg-[#05141D]" : "bg-warmBrown text-warmBeige"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              {/* User Info */}
+              <div
+                className="flex items-center cursor-pointer"
+                onClick={() => navigate(`/userProfile/${account._id}`)}
+              >
                 <img
-                  src={item.img}
-                  alt=""
-                  className="w-10 h-10 border-2 mx-1 rounded-lg cursor-pointer transition-all duration-300 
+                  src={account.photoURL || "/user.png"} // Use default image if photoURL is not available
+                  alt={account.username}
+                  className="w-10 h-10 border-2 rounded-full object-cover transition-all duration-300 
                   border-gray-300 dark:border-gray-500"
-                  onClick={() => navigate(`userProfile/${item.id}`)}
                 />
                 <h1
-                  className={`text-xs font-semibold cursor-pointer transition-all duration-300 ${
+                  className={`text-sm font-semibold ml-3 transition-all duration-300 ${
                     darkMode ? "text-gray-300" : "text-warmBeige"
                   }`}
-                  onClick={() => navigate(`userProfile/${item.id}`)}
                 >
-                  {item.name}
+                  {account.username}
                 </h1>
-                <button
-                  className={`font-semibold text-xs px-3 py-1 my-1 rounded-xl transition-all duration-300 ${
-                    darkMode ? "bg-[#C29F70] text-white" : "bg-warmBeige text-warmBrown border border-warmBrown"
-                  }`}
-                >
-                  follow
-                </button>
-                <RxCross2
-                  className={`cursor-pointer transition-all duration-300 ${
-                    darkMode ? "text-white hover:text-red-500" : "text-warmBeige hover:text-red-600"
-                  }`}
-                />
-              </span>
-            </span>
+              </div>
+
+              {/* Close Button */}
+              <RxCross2
+                className={`cursor-pointer transition-all duration-300 ${
+                  darkMode ? "text-white hover:text-red-500" : "text-warmBeige hover:text-red-600"
+                }`}
+              />
+            </div>
+
+            {/* Follow Button */}
+            <button
+              className={`w-full mt-2 font-semibold text-xs px-3 py-2 rounded-xl transition-all duration-300 ${
+                darkMode
+                  ? "bg-[#C29F70] text-white hover:bg-[#B08E5F]"
+                  : "bg-warmBeige text-warmBrown border border-warmBrown hover:bg-[#E4D5C7]"
+              }`}
+            >
+              Follow
+            </button>
           </div>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }

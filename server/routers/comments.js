@@ -14,7 +14,7 @@ router.use(express.json());
 router.get('/:postid/comments', isLoggedIn, async (req, res) => {
     try {
         const commentModel = new mongoose.model('comments', CommentSchema);
-        const comments = await commentModel.find({_id: req.params.postid}).populate('author');
+        const comments = await commentModel.find({ postid: req.params.postid }).populate('author');
         if(comments)
             res.status(200).json(comments);
         else

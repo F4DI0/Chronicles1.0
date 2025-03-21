@@ -4,6 +4,7 @@ import { IoIosSend, IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 import { FaRegCommentDots, FaRegEye } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import ViewPost from './ViewPost';
 
 function SinglePost(props) {
   const [likes, setLikes] = useState(0);
@@ -14,13 +15,14 @@ function SinglePost(props) {
   const [showAllComments, setShowAllComments] = useState(false);
   const [shares, setShares] = useState(0);
   const [showFullText, setShowFullText] = useState(false);
-  const [isImageOpen, setIsImageOpen] = useState(false);
+  const [isImageOpen, setIsImageOpen] = useState(false); // State for image modal
   const [isViewPostOpen, setIsViewPostOpen] = useState(false);
   const [post, setPost] = useState({});
   const navigate = useNavigate();
 
   const postId = props.postId;
 
+  // Fetch post data including comments
   useEffect(() => {
     const fetchPostData = async () => {
       try {
@@ -40,7 +42,7 @@ function SinglePost(props) {
         console.log("Fetched post data:", data);
         setLikes(data.likesCount || 0);
         setLiked(data.isLiked || false);
-        setComments(data.comments || []);
+        setComments(data.comments);
         setPost(data || {});
       } catch (error) {
         console.error("Error fetching post data:", error);
@@ -50,6 +52,7 @@ function SinglePost(props) {
     fetchPostData();
   }, [postId]);
 
+  // Handle liking/unliking a post
   const handleLike = async () => {
     try {
       const response = await fetch(`http://localhost:3000/posts/${postId}/like`, {
@@ -75,50 +78,77 @@ function SinglePost(props) {
     }
   };
 
-  const handleComment = async (e) => {
-    e.preventDefault();
-    const trimmedComment = commentText.trim(); // Trim whitespace
-    if (trimmedComment !== "") {
-      try {
-        const payload = { text: trimmedComment };
-        console.log("Sending payload:", payload); // Log the payload
-  
-        const response = await fetch(`http://localhost:3000/posts/${postId}/comment`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-          credentials: "include",
-        });
-  
-        if (response.ok) {
-          const data = await response.json();
-          setComments(data.comments || []);
-          setCommentText("");
-        } else {
-          const errorText = await response.text();
-          console.error("Error submitting comment:", errorText);
-          alert("Failed to submit comment. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error submitting comment:", error);
-        alert("An error occurred. Please try again.");
-      }
-    } else {
-      alert("Comment cannot be empty!");
-    }
-  };
-
+  // Handle sharing a post (simulated)
   const handleShare = async () => {
     setShares(shares + 1);
     alert("Post shared! (Just frontend simulation)");
   };
 
+  // Handle creating a new comment
+  const handleComment = async (e) => {
+    e.preventDefault();
+    const trimmedComment = commentText.trim();
+    if (!trimmedComment) {
+      alert("Comment cannot be empty!");
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:3000/posts/${postId}/comment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ comment: trimmedComment }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Comment created:", data);
+        setCommentText("");
+        const updatedComments = await fetchComments(postId);
+        setComments(updatedComments);
+      } else {
+        const errorText = await response.text();
+        console.error("Error creating comment:", errorText);
+        alert("Failed to create comment. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error handling comment:", error);
+      alert("An error occurred. Please try again.");
+    }
+  };
+
+  // Fetch comments for the post
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/posts/${postId}/comments`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error fetching comments:', errorText);
+        throw new Error('Failed to fetch comments');
+      }
+      const data = await response.json();
+      console.log(data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      alert("Failed to fetch comments. Please try again.");
+      return [];
+    }
+  };
+
+  // Check if a file is an image
   const isImageFile = (filetype) => {
     return filetype && filetype.startsWith('image/');
   };
 
+  // Check if a file is a PDF
   const isPdfFile = (filetype) => {
     return filetype === 'application/pdf';
   };
@@ -168,7 +198,7 @@ function SinglePost(props) {
               src={"http://localhost:3000/" + post.fileurl}
               alt="post"
               className="w-full h-auto object-cover rounded-2xl shadow-lg cursor-pointer"
-              onClick={() => setIsImageOpen(true)}
+              onClick={() => setIsImageOpen(true)} // Open image modal on click
             />
           ) : isPdfFile(post.filetype) ? (
             <object
@@ -205,60 +235,72 @@ function SinglePost(props) {
       </div>
 
       {showComments && (
-  <div className="my-2">
-    {/* Comment Input Form */}
-<form className="flex justify-between px-3 py-2" onSubmit={handleComment}>
-  <input
-    type="text"
-    placeholder="Add a comment..."
-    value={commentText}
-    onChange={(e) => setCommentText(e.target.value)}
-    className="w-full text-white text-sm bg-[#4E3728] p-2 rounded-lg focus:outline-none"
-  />
-  <button type="submit" className="text-blue-500 font-semibold">
-    Post
-  </button>
-</form>
+        <div className="my-2">
+          <form className="flex justify-between px-3 py-2" onSubmit={handleComment}>
+            <input
+              type="text"
+              placeholder="Add a comment..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              className="w-full text-white text-sm bg-[#4E3728] p-2 rounded-lg focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="text-blue-500 font-semibold"
+              disabled={!commentText.trim()}
+            >
+              Post
+            </button>
+          </form>
 
-{/* Display Comments */}
-<div className="comments-section max-h-64 overflow-y-auto">
-  {comments.slice(0, showAllComments ? comments.length : 3).map((comment, index) => (
-    <div key={comment._id || index} className="comment-item text-white text-sm p-2 border-b border-gray-600">
-      <p>{comment.text}</p>
-      <p className="text-xs text-gray-400">
-        - {comment.author?.username || "Unknown User"} ({new Date(comment.date).toLocaleString()})
-      </p>
-    </div>
-  ))}
+          <div className="comments-section max-h-64 overflow-y-auto px-3">
+            {comments.slice(0, showAllComments ? comments.length : 3).map((comment, index) => (
+              <div key={comment._id || index} className="comment-item text-white text-sm p-2 border-b border-gray-600">
+                <p className="break-words overflow-wrap-break-word max-w-full">
+                  {comment.comment}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  - {comment.author?.username || "Unknown User"} ({new Date(comment.date).toLocaleString()})
+                </p>
+              </div>
+            ))}
 
-  {/* Show All Comments Button */}
-  {comments.length > 3 && !showAllComments && (
-    <button
-      className="text-blue-400 text-xs cursor-pointer my-2"
-      onClick={() => setShowAllComments(true)}
-    >
-      Show All Comments
-    </button>
-  )}
-</div>
-  </div>
-)}
+            {comments.length > 3 && !showAllComments && (
+              <button
+                className="text-blue-400 text-xs cursor-pointer my-2"
+                onClick={() => setShowAllComments(true)}
+              >
+                Show All Comments
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
+      {/* Image Modal */}
       {isImageOpen && (
-        <div className="modal" onClick={() => setIsImageOpen(false)}>
-          <img
-            src={"http://localhost:3000/" + post.fileurl}
-            alt="post"
-            className="w-full max-h-[90vh] object-contain"
-          />
+        <div
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+          onClick={() => setIsImageOpen(false)} // Close modal when clicking outside the image
+        >
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img
+              src={"http://localhost:3000/" + post.fileurl}
+              alt="post"
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
+            <button
+              className="absolute top-4 right-4 text-white text-3xl cursor-pointer"
+              onClick={() => setIsImageOpen(false)} // Close modal when clicking the close button
+            >
+              ✖
+            </button>
+          </div>
         </div>
       )}
 
       {isViewPostOpen && (
-        <div className="modal" onClick={() => setIsViewPostOpen(false)}>
-          <div className="post-detail-content">
-          </div>
-        </div>
+        <ViewPost postId={postId} onClose={() => setIsViewPostOpen(false)} />
       )}
     </div>
   );

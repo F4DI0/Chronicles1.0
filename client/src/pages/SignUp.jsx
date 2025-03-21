@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext"; // Import UserContext
 
 function SignUp() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ function SignUp() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const { setUser } = useUser(); // Get setUser from UserContext
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +37,18 @@ function SignUp() {
 
       if (response.status === 200) {
         alert("Sign Up Successful!");
-        navigate("/home");
+
+        // Fetch user data immediately after signup
+        const userResponse = await fetch("http://localhost:3000/users/myprofile", {
+          credentials: "include",
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setUser(userData.myinfo); // Update UserContext with the fetched user data
+        }
+
+        navigate("/home"); // Redirect to home page
       } else {
         setErrorMessage(data.error || "An error occurred.");
       }

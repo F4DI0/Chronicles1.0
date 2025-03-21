@@ -4,47 +4,54 @@ import ProfileCom from "../components/ProfileCom";
 import Recent from "../components/Recent";
 import Genres from "../components/Genres";
 import { useEffect } from "react";
-import { useDarkMode } from "../context/DarkModeContext"; // ✅ Import Dark Mode Context
+import { useDarkMode } from "../context/DarkModeContext";
+import { useUser } from "../context/userContext";
+import LoadingSpinner from "../components/LoadingSpinner"; // Import the loading spinner
 
 function Home() {
-  const { darkMode } = useDarkMode(); // ✅ Get Dark Mode State
+  const { darkMode } = useDarkMode();
+  const { user, loading } = useUser();
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  if (loading) {
+    return <LoadingSpinner />; // Show loading spinner while fetching data
+  }
+
   return (
     <div
       className={`w-full flex items-start justify-center min-h-screen transition-colors duration-300 ${
         darkMode
-          ? "bg-[#2B1D14] text-white" // ✅ Dark Mode (Original Color)
-          : "bg-warmBeige text-warmText" // ✅ Light Mode (Beige Theme)
+          ? "bg-[#2B1D14] text-white"
+          : "bg-warmBeige text-warmText"
       }`}
     >
       {/* Left side components */}
       <div
-        className={`hidden lg:flex items-center justify-center flex-col p-4 w-0 md:w-1/4 sticky left-0 top-16 ${
-          darkMode ? "bg-[#2B1D14]" : "bg-warmBeige text-warmText border border-warmBrown"
+        className={`hidden lg:flex flex-col p-4 w-80 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto border-r ${
+          darkMode ? "border-gray-700 bg-[#2B1D14]" : "border-warmBrown bg-warmBeige text-warmText"
         }`}
       >
         <ProfileCom />
-        <Genres />
       </div>
 
       {/* Center side components */}
       <div
-        className={`flex items-center justify-center flex-col p-3 w-full lg:w-1/2 ${
-          darkMode ? "bg-[#2B1D14]" : "bg-warmBeige text-warmText"
+        className={`flex flex-col p-3 w-full lg:w-[calc(100%-32rem)] max-w-4xl mx-auto ${
+          darkMode ? "border-gray-700 bg-[#2B1D14]" : "border-warmBrown bg-warmBeige text-warmText"
         }`}
       >
-        <NewpostUploader />
+        {/* Conditionally render NewpostUploader for Writers */}
+        {user?.isWriter && <NewpostUploader />}
         <Post />
       </div>
 
       {/* Right side components */}
       <div
-        className={`hidden lg:flex items-center justify-center flex-col p-3 w-1/4 sticky right-0 top-16 ${
-          darkMode ? "bg-[#2B1D14]" : "bg-warmBeige text-warmText border border-warmBrown"
+        className={`hidden lg:flex flex-col p-3 w-80 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto border-l ${
+          darkMode ? "border-gray-700 bg-[#2B1D14]" : "border-warmBrown bg-warmBeige text-warmText"
         }`}
       >
         <Recent />

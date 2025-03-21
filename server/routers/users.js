@@ -6,7 +6,19 @@ const { FollowSchema } = require('../schemas/follow');
 const router = express.Router();
 router.use(express.urlencoded({ extended: true }))
 
-//delete later
+router.get("/myprofile", isLoggedIn, async (req, res) => {
+    try {
+        const usermodel = mongoose.model('users', UserSchema);
+        const followmodel = mongoose.model('followers', FollowSchema);
+        const myinfo = await usermodel.findOne({ _id: req.session.login }).select("username email isWriter");
+        const following = await followmodel.countDocuments({ follower: myinfo });
+        const followers = await followmodel.countDocuments({ follows: myinfo });
+        res.status(200).json({ myinfo, following, followers });
+    } catch (error) {
+        console.log(error);
+    }
+})
+
 router.get('/allusers', async (req, res) => {
     const usermodel = new mongoose.model('users', UserSchema);
     const allusers = await usermodel.find({});
@@ -16,12 +28,12 @@ router.get('/allusers', async (req, res) => {
 router.get('/:id', isLoggedIn, async (req, res) => {
     const usermodel = mongoose.model('users', UserSchema);
     const followmodel = mongoose.model('followers', FollowSchema);
-    const user = await usermodel.findOne({ _id: req.params.id }).select('username isWriter')
+    const user = await usermodel.findOne({ _id: req.params.id }).select('username isWriter email');
     if (!user)
         return res.status(404).json({ error: "profile not found" });
     const modifieduser = user.toObject();
-    const countfollowing = await followmodel.countDocuments({follower: req.params.id});
-    const countfollowers = await followmodel.countDocuments({follows: req.params.id});
+    const countfollowing = await followmodel.countDocuments({ follower: req.params.id });
+    const countfollowers = await followmodel.countDocuments({ follows: req.params.id });
     modifieduser.follows = countfollowing;
     modifieduser.followers = countfollowers;
     res.status(200).json(modifieduser);
@@ -85,6 +97,8 @@ router.delete('/follow/:id', isLoggedIn, async (req, res) => {
         res.status(400).json({ error });
     }
 })
+
+
 
 
 

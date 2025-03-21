@@ -1,6 +1,6 @@
 import { Route, Routes, useLocation } from "react-router-dom";
 import TopHeader from "./components/TopHeader";
-import Home from "./pages/Home"; // ✅ Home is the feed now
+import Home from "./pages/Home"; // 
 import ProfileSinglePage from "./pages/ProfileSinglePage";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
@@ -10,13 +10,13 @@ import BecomeWriterForm from "../Forms/BecomeWriterFrom";
 import EditProfilePage from "./components/EditeProfilePage";
 import LikedPosts from "./pages/LikedPosts";
 import LandingPage from "./pages/LandingPage";
-import { useDarkMode } from "./context/DarkModeContext"; // ✅ Import dark mode
+import { useDarkMode } from "./context/DarkModeContext"; // Import dark mode
 import WritersInsights from "./components/WritersInsight";
 import TextEditor from "./components/editor/TextEditor";
 
 function App() {
   const location = useLocation();
-  const { darkMode } = useDarkMode(); // ✅ Use global dark mode
+  const { darkMode } = useDarkMode(); //  Use global dark mode
 
   // Hide the header on Landing Page, Login, and Signup
   const hideHeader = ["/", "/login", "/signup"].includes(location.pathname);
@@ -25,18 +25,18 @@ function App() {
     <div
       className={`min-h-screen transition-colors duration-300 ${
         darkMode
-          ? "bg-gray-900 text-white" // ✅ Dark Mode (default)
-          : "bg-warmBeige text-warmText" // ✅ Light Mode (custom colors)
+          ? "bg-gray-900 text-white" //  Dark Mode (default)
+          : "bg-warmBeige text-warmText" //  Light Mode (custom colors)
       }`}
     >
-      {/* ✅ Show Header only when user is logged in */}
+      {/*  Show Header only when user is logged in */}
       {!hideHeader && <TopHeader />}
 
       <Routes>
-        {/* ✅ Default Landing Page */}
+        {/*  Default Landing Page */}
         <Route path="/" element={<LandingPage />} />
 
-        {/* ✅ Public Routes (Login & Signup) */}
+        {/*  Public Routes (Login & Signup) */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
 

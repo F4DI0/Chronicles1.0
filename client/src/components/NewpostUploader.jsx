@@ -2,6 +2,7 @@ import { GiScrollQuill } from "react-icons/gi";
 import { ImCross } from "react-icons/im";
 import { FaFileImage, FaFilePdf } from "react-icons/fa";
 import { useState } from "react";
+import { useDarkMode } from "../context/DarkModeContext"; // Import Dark Mode Context
 
 function NewpostUploader() {
   const [uploadData, setUploadData] = useState(false);
@@ -10,6 +11,7 @@ function NewpostUploader() {
   const [genre, setGenre] = useState("");
   const [value, setValue] = useState("Upload");
   const [previewUrl, setPreviewUrl] = useState(null);
+  const { darkMode } = useDarkMode(); // Get dark mode state
 
   // Function to create a post by sending data to the backend
   const handleCreatePost = async (description, file, genre) => {
@@ -58,15 +60,15 @@ function NewpostUploader() {
   };
 
   return (
-    <div className="w-full lg:w-4/5 rounded-xl px-3 py-2 bg-black/20 flex items-center justify-center flex-col">
+    <div className={`w-full lg:w-4/5 rounded-xl px-3 py-2 ${darkMode ? "bg-[#2B1D14]" : "bg-[#F5E6C8]"} flex items-center justify-center flex-col`}>
       {/* Open Post Uploader */}
       <span className="flex items-center justify-center w-full my-3">
         <label
-          className="flex items-center justify-center bg-black/40 px-4 py-2 rounded-lg cursor-pointer hover:bg-black/60 transition"
+          className={`flex items-center justify-center ${darkMode ? "bg-[#3E2723] hover:bg-[#4E342E]" : "bg-[#8D6E63] hover:bg-[#795548]"} px-4 py-2 rounded-lg cursor-pointer transition`}
           onClick={() => setUploadData(true)}
         >
-          <GiScrollQuill className="text-green-600 mx-2 text-lg" />
-          <h3 className="text-white text-sm font-semibold">Create a Post</h3>
+          <GiScrollQuill className={`${darkMode ? "text-green-400" : "text-green-600"} mx-2 text-lg`} />
+          <h3 className={`${darkMode ? "text-white" : "text-[#3E2723]"} text-sm font-semibold`}>Create a Post</h3>
         </label>
       </span>
 
@@ -74,13 +76,13 @@ function NewpostUploader() {
       {uploadData && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <form
-            className="w-full max-w-lg bg-[#1f1410] shadow-lg rounded-lg flex flex-col p-6 text-white relative"
+            className={`w-full max-w-lg ${darkMode ? "bg-[#1f1410]" : "bg-[#F5E6C8]"} shadow-lg rounded-lg flex flex-col p-6 ${darkMode ? "text-white" : "text-[#3E2723]"} relative`}
             onSubmit={handleSubmit}
           >
             {/* Close Button */}
             <ImCross
               fontSize={20}
-              className="absolute top-3 right-3 cursor-pointer hover:text-gray-400"
+              className={`absolute top-3 right-3 cursor-pointer ${darkMode ? "hover:text-gray-400" : "hover:text-gray-600"}`}
               onClick={() => setUploadData(false)}
             />
 
@@ -88,12 +90,12 @@ function NewpostUploader() {
 
             {/* Description Input */}
             <div className="mb-4">
-              <label className="block text-gray-300 text-sm mb-1">Description</label>
+              <label className="block text-sm mb-1">Description</label>
               <textarea
                 name="description"
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
-                className="w-full bg-gray-900 text-white p-2 rounded-md border border-gray-700 outline-none focus:border-gray-500 text-sm"
+                className={`w-full ${darkMode ? "bg-[#3E2723] text-white" : "bg-[#FFFFFF] text-[#3E2723]"} p-2 rounded-md border ${darkMode ? "border-gray-700" : "border-gray-300"} outline-none focus:border-gray-500 text-sm`}
                 placeholder="Write something about your post..."
                 rows="2"
               ></textarea>
@@ -101,31 +103,31 @@ function NewpostUploader() {
 
             {/* Genre Selection */}
             <div className="mb-4">
-              <label className="block text-gray-300 text-sm mb-1">Genre / Tag</label>
+              <label className="block text-sm mb-1">Genre / Tag</label>
               <input
                 type="text"
                 name="genre"
                 value={genre}
                 onChange={(e) => setGenre(e.target.value)}
-                className="w-full bg-gray-900 text-white p-2 rounded-md border border-gray-700 outline-none focus:border-gray-500 text-sm"
+                className={`w-full ${darkMode ? "bg-[#3E2723] text-white" : "bg-[#FFFFFF] text-[#3E2723]"} p-2 rounded-md border ${darkMode ? "border-gray-700" : "border-gray-300"} outline-none focus:border-gray-500 text-sm`}
                 placeholder="Enter a genre (e.g., Fiction, Science, History)"
               />
             </div>
 
             {/* File Upload */}
             <div className="mb-4">
-              <label className="block text-gray-300 text-sm mb-1">Attach a File (Image or PDF)</label>
+              <label className="block text-sm mb-1">Attach a File (Image or PDF)</label>
               <input
                 type="file"
                 accept="image/*,application/pdf"
-                className="block w-full text-white bg-gray-800 p-2 rounded-md border border-gray-700 cursor-pointer text-sm"
+                className={`block w-full ${darkMode ? "bg-[#3E2723] text-white" : "bg-[#FFFFFF] text-[#3E2723]"} p-2 rounded-md border ${darkMode ? "border-gray-700" : "border-gray-300"} cursor-pointer text-sm`}
                 onChange={handleFileChange}
               />
             </div>
 
             {/* File Preview */}
             {previewUrl && (
-              <div className="w-full flex items-center justify-center bg-gray-900 p-3 rounded-lg mt-3">
+              <div className={`w-full flex items-center justify-center ${darkMode ? "bg-[#3E2723]" : "bg-[#FFFFFF]"} p-3 rounded-lg mt-3`}>
                 {file?.type.startsWith("image/") ? (
                   <img
                     src={previewUrl}
@@ -133,9 +135,9 @@ function NewpostUploader() {
                     className="w-auto max-h-40 rounded-md object-contain"
                   />
                 ) : (
-                  <div className="flex flex-col items-center text-gray-300">
-                    <FaFilePdf className="text-red-500 text-3xl mb-2" />
-                    <p className="text-xs">{file.name}</p>
+                  <div className="flex flex-col items-center">
+                    <FaFilePdf className={`${darkMode ? "text-red-400" : "text-red-600"} text-3xl mb-2`} />
+                    <p className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{file.name}</p>
                   </div>
                 )}
               </div>
@@ -146,13 +148,13 @@ function NewpostUploader() {
               <button
                 type="button"
                 onClick={() => setUploadData(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm"
+                className={`px-4 py-2 ${darkMode ? "bg-[#3E2723] hover:bg-[#4E342E]" : "bg-[#8D6E63] hover:bg-[#795548]"} rounded-md text-sm ${darkMode ? "text-white" : "text-[#3E2723]"}`}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-green-700 hover:bg-green-600 rounded-md text-sm"
+                className={`px-4 py-2 ${darkMode ? "bg-green-700 hover:bg-green-600" : "bg-green-600 hover:bg-green-500"} rounded-md text-sm text-white`}
                 disabled={!desc && !file}
               >
                 {value}

@@ -1,5 +1,6 @@
 @tailwind base;
 @tailwind components;
+@tailwind utilities;
 
 .scrolled::-webkit-scrollbar {
   display: none;
@@ -8,5 +9,3 @@
   opacity: 1;
   transition: all 0.3s;
 }
-@tailwind utilities;
-

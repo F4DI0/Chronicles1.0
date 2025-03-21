@@ -128,8 +128,7 @@ router.post('/login', async (req, res) => {
 router.get('/logout', isLoggedIn, async (req, res) => {
     try {
         req.session.destroy();
-        res.redirect('/testing')
-
+        res.status(200).json({ message: 'Success logout' });
     } catch (error) {
         res.status(400).json({ error });
     }

@@ -100,7 +100,7 @@ router.get('/:id', isLoggedIn, async (req, res) => {
     const usermodel = mongoose.model('users', UserSchema);
 
     // Find the post
-    const post = await postmodel.findOne({ _id: req.params.id }).populate("author", "username");
+    const post = await postmodel.findOne({ _id: req.params.id }).populate("author", "username email");
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
@@ -275,122 +275,6 @@ router.post('/:id/like', isLoggedIn, async (req, res) => {
     } catch (error) {
       console.error("Error liking/unliking post:", error);
       res.status(500).json({ error: "Failed to like/unlike post" });
-    }
-  });
-  
-  router.delete('/:id/like', isLoggedIn, async (req, res) => {
-    try {
-      const postmodel = mongoose.model('posts', PostSchema);
-      const likedmodel = mongoose.model("likes", LikeSchema);
-      const usermodel = mongoose.model("users", UserSchema);
-  
-      // Find the post
-      const post = await postmodel.findOne({ _id: req.params.id });
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-  
-      // Find the user
-      const user = await usermodel.findOne({ _id: req.session.login });
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-  
-      // Check if the post is already liked by the user
-      const isliked = await likedmodel.findOne({ author: user._id, postid: post._id });
-  
-      // If the post is not liked, return an error
-      if (!isliked) {
-        return res.status(400).json({ error: "Post is already not liked" });
-      }
-  
-      // Unlike the post (since it is already liked)
-      await likedmodel.deleteOne({ author: user._id, postid: post._id });
-  
-      // Calculate the new likesCount
-      const likesCount = await likedmodel.countDocuments({ postid: post._id });
-  
-      res.status(200).json({ likesCount, isLiked: false });
-    } catch (error) {
-      console.error("Error unliking post:", error);
-      res.status(500).json({ error: "Failed to unlike post" });
-    }
-  });
-  
-  router.post('/:id/comment', isLoggedIn, async (req, res) => {
-    console.log("Request body:", req.body); // Log the request body
-    console.log("Request headers:", req.headers); // Log the headers
-    try {
-      const commentmodel = mongoose.model('comments', CommentSchema);
-      const postmodel = mongoose.model('posts', PostSchema);
-      const usermodel = mongoose.model('users', UserSchema);
-  
-      // Find the post
-      const post = await postmodel.findOne({ _id: req.params.id });
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-  
-      // Find the user
-      const user = await usermodel.findOne({ _id: req.session.login });
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-  
-      // Validate the comment text
-      const { text } = req.body;
-      console.log("Received text:", text); // Log the received text
-      if (!text || typeof text !== 'string' || text.trim() === "") {
-        return res.status(400).json({ error: "Comment text is required and cannot be empty" });
-      }
-  
-      // Create the comment
-      const newComment = new commentmodel({
-        text: text.trim(), // Ensure no leading/trailing whitespace
-        author: user._id,
-        postid: post._id,
-      });
-      await newComment.save();
-  
-      // Fetch the updated list of comments
-      const comments = await commentmodel.find({ postid: post._id }).populate('author', 'username');
-  
-      res.status(200).json({ comments });
-    } catch (error) {
-      console.error("Error adding comment:", error);
-      res.status(500).json({ error: "Failed to add comment" });
-    }
-  });
-
-  router.delete('/comments/:id', isLoggedIn, async (req, res) => {
-    try {
-      const commentmodel = mongoose.model('comments', CommentSchema);
-      const usermodel = mongoose.model('users', UserSchema);
-  
-      // Find the comment
-      const comment = await commentmodel.findOne({ _id: req.params.id });
-      if (!comment) {
-        return res.status(404).json({ error: "Comment not found" });
-      }
-  
-      // Find the user
-      const user = await usermodel.findOne({ _id: req.session.login });
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-  
-      // Check if the user is the author of the comment
-      if (comment.author.toString() !== user._id.toString()) {
-        return res.status(403).json({ error: "You are not authorized to delete this comment" });
-      }
-  
-      // Delete the comment
-      await commentmodel.deleteOne({ _id: comment._id });
-  
-      res.status(200).json({ message: "Comment deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting comment:", error);
-      res.status(500).json({ error: "Failed to delete comment" });
     }
   });
 

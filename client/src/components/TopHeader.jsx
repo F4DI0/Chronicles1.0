@@ -58,16 +58,16 @@ function TopHeader() {
   };
 
   const handleLogout = async () => {
-    try {
-      // Replace with session-based logout logic (Express-session + Passport.js)
-      await fetch("/logout", {
-        method: "POST",
-        credentials: "include", // Ensure cookies are sent with the request
-      });
-      navigate("/");
-    } catch (error) {
-      console.error("Logout failed: ", error);
-    }
+    fetch("http://localhost:3000/account/logout", {
+      method: "GET",
+      headers: {
+          "contentType": "application/json"
+      },
+      credentials: "include"
+  }).then(response =>{
+      if (response.status == 200) {
+        navigate("/login");
+  }});
   };
 
   const toggleDarkMode = () => {

@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { FaRegEye } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
 import { useDarkMode } from "../context/DarkModeContext";
 import ViewPost from "../components/ViewPost";
 
 function LikedPosts() {
   const { darkMode } = useDarkMode();
-  const navigate = useNavigate();
   const [likedPosts, setLikedPosts] = useState([]);
-  const [selectedPost, setSelectedPost] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isViewPostOpen, setIsViewPostOpen] = useState(false); // State for ViewPost modal
+  const [selectedPostId, setSelectedPostId] = useState(null); // State to store the selected post ID
 
   useEffect(() => {
     // Fetch liked posts from the backend
@@ -35,8 +34,9 @@ function LikedPosts() {
       });
   }, []);
 
-  const handleViewPost = (post) => {
-    setSelectedPost(post); // Open post for viewing
+  const handleViewPost = (postId) => {
+    setSelectedPostId(postId); // Set the selected post ID
+    setIsViewPostOpen(true); // Open the ViewPost modal
   };
 
   return (
@@ -108,7 +108,7 @@ function LikedPosts() {
                       ? "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white"
                       : "bg-warmBrown text-warmBeige hover:bg-[#A07355] hover:text-warmText"
                   }`}
-                  onClick={() => handleViewPost(post)}
+                  onClick={() => handleViewPost(post._id)} // Pass the post ID to handleViewPost
                 >
                   <FaRegEye fontSize={20} />
                 </button>
@@ -123,7 +123,12 @@ function LikedPosts() {
       </div>
 
       {/* ViewPost Modal */}
-      {selectedPost && <ViewPost post={selectedPost} onClose={() => setSelectedPost(null)} />}
+      {isViewPostOpen && (
+        <ViewPost
+          postId={selectedPostId}
+          onClose={() => setIsViewPostOpen(false)} // Close the modal
+        />
+      )}
     </div>
   );
 }

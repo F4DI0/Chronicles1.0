@@ -5,10 +5,9 @@ const DarkModeContext = createContext();
 
 // Provide Context to the App
 export const DarkModeProvider = ({ children }) => {
+  // Get the theme from localStorage, default to "dark" if not found
   const storedTheme = localStorage.getItem("theme");
-  const [darkMode, setDarkMode] = useState(
-    storedTheme ? storedTheme === "light" : true // Default to dark mode if no setting is found
-  );
+  const [darkMode, setDarkMode] = useState(storedTheme === "dark");
 
   useEffect(() => {
     if (darkMode) {

@@ -27,7 +27,8 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  
 }, { versionKey: false });
 
-// Export the model directly
-module.exports = mongoose.model('users', UserSchema);
+
+module.exports.UserSchema = UserSchema;
