@@ -4,6 +4,8 @@ const { isLoggedIn } = require('../utilities/isloggedin');
 const { PostSchema } = require('../schemas/post');
 const { UserSchema } = require('../schemas/user');
 const { CommentSchema } = require('../schemas/comments');
+const { notificationSchema } = require('../schemas/notification');
+const { unseenNotificationSchema } = require('../schemas/notificationUnseen');
 const router = express.Router();
 router.use(express.urlencoded({extended: true}))
 router.use(express.json());
@@ -28,14 +30,16 @@ router.get('/:postid/comments', isLoggedIn, async (req, res) => {
 router.post('/:postid/comment', isLoggedIn, async (req, res) => {
     try {
 
-        const {comment} = req.body;
-        if(!comment){
-            res.status(400).json({error: "comment can not be empty"});
+        const { comment } = req.body;
+        if (!comment) {
+            res.status(400).json({ error: "comment can not be empty" });
             return;
         }
         const commentModel = mongoose.model('comments', CommentSchema);
         const userModel = mongoose.model('users', UserSchema);
-        const postModel =  mongoose.model('posts', PostSchema);
+        const postModel = mongoose.model('posts', PostSchema);
+        const unseenNotifmodel = mongoose.model("unseennotifications", unseenNotificationSchema);
+        const notificationmodel = mongoose.model("notifications", notificationSchema);
         const post = await postModel.findById(req.params.postid);
         const author = await userModel.findById(req.session.login);
 
@@ -45,14 +49,27 @@ router.post('/:postid/comment', isLoggedIn, async (req, res) => {
             author,
             postid: post
         });
-        const status = await newcomment.save();
-        if(status)
-            res.status(200).json({message:"success"});
-        else
-            res.status(400).json({error: "something went wrong"});
+        await newcomment.save();
+        const newnotification = new notificationmodel({
+            for_author: post.author,
+            from_author: author,
+            notificationtype: "comment",
+            postid: post,
+            date: new Date(),
+        })
+        await newnotification.save();
+        const unseennotif = new unseenNotifmodel({
+            for_author: post.author,
+            notificationid: newnotification
+        })
+        await unseennotif.save();
+
+        res.status(200).json({ message: "success" });
+
+
     } catch (error) {
         console.log(error);
-        res.status(400).json({error});
+        res.status(400).json({ error: "something went wrong" });
     }
 })
 
@@ -74,15 +91,22 @@ router.patch('/:postid/:id', isLoggedIn, async (req, res) => {
 
 router.delete('/:postid/:id', isLoggedIn, async (req, res) => {
     try {
-        const commentModel = new mongoose.model('comments', CommentSchema);
-        const commentstatus = await commentModel.deleteOne({ _id: req.params.id, author:req.session.login});
-        if(commentstatus.deletedCount > 0)
-            res.status(200).json({message:"success"});
-        else
-            res.status(404).json({error:"comment not found"});
-
+        const postModel = mongoose.model('posts', PostSchema);
+        const unseenNotifmodel = mongoose.model("unseennotifications", unseenNotificationSchema);
+        const notificationmodel = mongoose.model("notifications", notificationSchema);
+        const commentModel = mongoose.model('comments', CommentSchema);
+        
+        const commentstatus = await commentModel.deleteOne({ _id: req.params.id, author: req.session.login });
+        const post = await postModel.findOne({_id: req.params.postid});
+        const notification = await notificationmodel.findOne({from_author: req.session.login, notificationtype: "comment", postid: post});
+        
+        await unseenNotifmodel.deleteOne({for_author: post.author, notificationid: notification});
+        await notificationmodel.deleteOne({from_author: req.session.login, notificationtype: "comment", postid: post});
+        
+        res.status(200).json({message: "success"})
     } catch (error) {
-        res.status(400).json({error});
+        console.log(error);
+        res.status(400).json({ error });
     }
 })
 

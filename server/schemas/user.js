@@ -27,7 +27,12 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  
+
+  preferences: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Preferences',
+    required: false, //needs fixes
+  }
 }, { versionKey: false });
 
 

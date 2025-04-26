@@ -8,6 +8,10 @@ const { router: CommentRouter } = require("./routers/comments");
 const { router: fileRouter } = require("./routers/file");
 const { router: userRouter } = require("./routers/users");
 const { router: preferenceRouter } = require("./routers/preference");
+const { router: notificationRouter } = require("./routers/notifications")
+const { router: searchRouter } = require("./routers/search");
+const { router: validatorRouter } = require("./routers/validator")
+const { router: writersRouter } = require("./routers/writers")
 const path = require('path');
 
 const app = express();
@@ -15,7 +19,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: 'http://localhost:5173',
-  credentials: true, 
+  credentials: true,
 }));
 app.use(session({
   secret: 'thisisapasswordforsessions', // Use a strong, unique secret
@@ -35,6 +39,10 @@ app.use("/account", SignUpRouter);
 app.use("/", fileRouter);
 app.use("/users", userRouter);
 app.use("/preference", preferenceRouter);
+app.use("/notifications", notificationRouter);
+app.use("/search", searchRouter);
+app.use("/validation", validatorRouter);
+app.use('/writers', writersRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {

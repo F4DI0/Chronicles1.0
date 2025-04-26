@@ -1,117 +1,138 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { RxCross2 } from "react-icons/rx";
-import { useDarkMode } from "../context/DarkModeContext"; // Import Dark Mode Context
-import { useUser } from "../context/userContext"; // Import UserContext to get the current user
-import LoadingSpinner from "../components/LoadingSpinner"; // Import Loading Spinner
+import { useDarkMode } from "../context/DarkModeContext";
+import { useUser } from "../context/userContext";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { motion } from "framer-motion";
+import ProfileFollowButton from "../components/ProfileFollowButton";
 
 function Recent() {
   const navigate = useNavigate();
-  const { darkMode } = useDarkMode(); // Use Dark Mode State
-  const { user: currentUser } = useUser(); // Get the currently signed-in user
-  const [accounts, setAccounts] = useState([]); // State to store fetched accounts
-  const [loading, setLoading] = useState(true); // Loading state
+  const { darkMode } = useDarkMode();
+  const { user: currentUser } = useUser();
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [profilePics, setProfilePics] = useState({});
 
-  // Fetch all accounts from the backend
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const response = await fetch("http://localhost:3000/users/allusers", {
-          credentials: "include", // Include cookies for session-based auth
+        setLoading(true);
+        const res = await fetch("http://localhost:3000/users/allusers", {
+          credentials: "include",
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          // Filter out the currently signed-in user
-          const filteredAccounts = data.filter(
+        if (res.ok) {
+          const accountsData = await res.json();
+          const filteredAccounts = accountsData.filter(
             (account) => account._id !== currentUser?._id
           );
-          setAccounts(filteredAccounts); // Store filtered accounts in state
-        } else {
-          console.error("Failed to fetch accounts");
+          setAccounts(filteredAccounts);
+
+          // Fetch profile pictures
+          const pics = {};
+          for (const account of filteredAccounts) {
+            const res = await fetch(`http://localhost:3000/users/${account._id}`, {
+              credentials: "include",
+            });
+            if (res.ok) {
+              const userData = await res.json();
+              if (userData.preferences?.profilepic) {
+                pics[account._id] = `http://localhost:3000/${userData.preferences.profilepic}`;
+              }
+            }
+          }
+          setProfilePics(pics);
         }
       } catch (error) {
-        console.error("Error fetching accounts:", error);
+        console.error("Error fetching data:", error);
       } finally {
-        setLoading(false); // Set loading to false after fetching
+        setLoading(false);
       }
     };
 
     fetchAccounts();
-  }, [currentUser?._id]); // Re-fetch if the current user changes
+  }, [currentUser?._id]);
 
   if (loading) {
-    return <LoadingSpinner />; // Show loading spinner while fetching data
+    return (
+      <div className={`hidden lg:flex w-72 h-64 items-center justify-center ${darkMode ? "bg-gray-900" : "bg-warmBeige"
+        }`}>
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   return (
-    <div
-      className={`w-3/4 my-5 shadow-md rounded-3xl overflow-hidden relative hidden lg:flex items-center justify-center flex-col transition-all duration-300 ${
-        darkMode
-          ? "bg-black/20 text-white" // Dark Mode (Original Styling)
-          : "bg-warmBeige text-warmText border border-warmBrown" // Light Mode (Beige & Brown)
-      }`}
-    >
-      <span
-        className={`w-full px-5 font-bold text-xl flex items-center justify-start my-4 ${
-          darkMode ? "text-white" : "text-warmBrown"
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className={`hidden lg:flex mt-20 flex-col w-72 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto p-4 ${darkMode ? "bg-gray-900/50" : "bg-warmBrown"
         }`}
-      >
+    >
+      <h2 className={`text-xl font-bold mb-4 ${darkMode ? "text-white" : "text-warmBeige"
+        }`}>
         Suggested Writers
-      </span>
+      </h2>
 
-      {/* Scrollable List */}
-      <div className="w-full h-64 overflow-y-auto px-5">
+      <div className="space-y-3">
         {accounts.map((account) => (
-          <div
+          <motion.div
             key={account._id}
-            className={`w-full rounded-lg shadow-lg my-2 p-3 transition-all duration-300 ${
-              darkMode ? "bg-[#05141D]" : "bg-warmBrown text-warmBeige"
-            }`}
+            whileHover={{ scale: 1.02 }}
+            className={`flex items-center justify-between p-3 rounded-xl transition-colors ${darkMode
+                ? "bg-gray-800 hover:bg-gray-700"
+                : "bg-white hover:bg-amber-50 border border-amber-100"
+              }`}
           >
-            <div className="flex items-center justify-between">
-              {/* User Info */}
-              <div
-                className="flex items-center cursor-pointer"
-                onClick={() => navigate(`/userProfile/${account._id}`)}
-              >
+            <div
+              className="flex items-center cursor-pointer flex-1"
+              onClick={() => navigate(`/user/${account._id}`)}
+            >
+              <div className="relative">
                 <img
-                  src={account.photoURL || "/user.png"} // Use default image if photoURL is not available
+                  src={profilePics[account._id] || "/user.png"}
                   alt={account.username}
-                  className="w-10 h-10 border-2 rounded-full object-cover transition-all duration-300 
-                  border-gray-300 dark:border-gray-500"
+                  className="w-10 h-10 rounded-full object-cover border-2 border-amber-500"
+                  onError={(e) => {
+                    e.target.onerror = null; // prevents looping
+                    e.target.src = "/user.png";
+                  }}
                 />
-                <h1
-                  className={`text-sm font-semibold ml-3 transition-all duration-300 ${
-                    darkMode ? "text-gray-300" : "text-warmBeige"
-                  }`}
-                >
-                  {account.username}
-                </h1>
+                {account.isWriter && (
+                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 ${darkMode ? "border-gray-800 bg-blue-200" : "border-black bg-blue-200"
+                    }`} />
+                )}
               </div>
-
-              {/* Close Button */}
-              <RxCross2
-                className={`cursor-pointer transition-all duration-300 ${
-                  darkMode ? "text-white hover:text-red-500" : "text-warmBeige hover:text-red-600"
-                }`}
-              />
+              <div className="ml-3 overflow-auto">
+                <h3 className={`font-medium truncate ${darkMode ? "text-white" : "text-warmBrown"
+                  }`}>
+                  {account.username}
+                </h3>
+                <p className={`text-xs truncate ${darkMode ? "text-gray-400" : "text-amber-700"
+                  }`}>
+                  {account.firstname} {account.lastname}
+                </p>
+              </div>
             </div>
 
-            {/* Follow Button */}
-            <button
-              className={`w-full mt-2 font-semibold text-xs px-3 py-2 rounded-xl transition-all duration-300 ${
-                darkMode
-                  ? "bg-[#C29F70] text-white hover:bg-[#B08E5F]"
-                  : "bg-warmBeige text-warmBrown border border-warmBrown hover:bg-[#E4D5C7]"
-              }`}
-            >
-              Follow
-            </button>
-          </div>
+            {currentUser?._id !== account._id && (
+              <div className="ml-2">
+                <ProfileFollowButton profileUserId={account._id} size="small" />
+              </div>
+            )}
+          </motion.div>
         ))}
+
+        {accounts.length === 0 && (
+          <p className={`text-center py-4 ${darkMode ? "text-gray-400" : "text-amber-700"
+            }`}>
+            No suggested writers found
+          </p>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

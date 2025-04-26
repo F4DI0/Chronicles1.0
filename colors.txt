@@ -1,0 +1,4 @@
+border-gray-700
+border-warmBrown
+bg-warmBeige
+bg-[#2B1D14]

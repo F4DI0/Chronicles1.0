@@ -1,85 +1,154 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { LuImagePlus } from "react-icons/lu";
+import { useUser } from "../context/userContext";
 
 function EditProfilePage() {
   const navigate = useNavigate();
+  const { user, setUser } = useUser();
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Placeholder user ID (to be replaced with dynamic ID when backend is connected)
-  const userId = "hVy5syKOgoPVIG1iy9RtzVKThBp1";
+  // State for form fields
+  const [bio, setBio] = useState("");
+  const [profilePic, setProfilePic] = useState("/user.png");
+  const [selectedProfileFile, setSelectedProfileFile] = useState(null);
 
-  // Placeholder state for form fields (to be fetched from the backend later)
-  const [userData, setUserData] = useState({
-    name: "", // Replace with actual dynamic name from backend
-    bio: "",  // Replace with actual dynamic bio from backend
-    interests: "", // Replace with actual interests from backend
-  });
+  // Fetch current user data on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("http://localhost:3000/users/myprofile", {
+          credentials: "include",
+        });
 
-  // Placeholder state for image previews
-  const [profilePic, setProfilePic] = useState("/user.png"); // Default profile image
-  const [coverPhoto, setCoverPhoto] = useState("/Cover.jpg"); // Default cover photo
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
 
-  // Handle Input Change
-  const handleChange = (e) => {
-    setUserData({ ...userData, [e.target.name]: e.target.value });
-  };
+        const data = await response.json();
+        setBio(data.myinfo.bio || "");
 
-  // Handle Image Upload
-  const handleImageUpload = (e, type) => {
+        // If user has a profile picture, fetch it
+        if (data.myinfo.profilepic && data.myinfo.profilepic !== "none") {
+          const picId = data.myinfo.profilepic.split("/")[1];
+          const picResponse = await fetch(`http://localhost:3000/file/${picId}`, {
+            credentials: "include",
+          });
+
+          if (picResponse.ok) {
+            const blob = await picResponse.blob();
+            setProfilePic(URL.createObjectURL(blob));
+          }
+        }
+      } catch (error) {
+        console.error("Fetch error:", error);
+        setErrorMessage("Failed to load profile data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const handleProfileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      if (type === "profile") {
-        setProfilePic(imageUrl);
-      } else {
-        setCoverPhoto(imageUrl);
+      // Basic validation (you might want to add more)
+      if (!file.type.startsWith("image/")) {
+        setErrorMessage("Please upload an image file");
+        return;
       }
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorMessage("Image must be less than 5MB");
+        return;
+      }
+
+      const imageUrl = URL.createObjectURL(file);
+      setProfilePic(imageUrl);
+      setSelectedProfileFile(file);
+      setErrorMessage(""); // Clear any previous errors
     }
   };
 
-  // Handle Form Submission (Redirects to Profile Page)
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Updated Data:", userData);
-    console.log("Profile Pic:", profilePic);
-    console.log("Cover Photo:", coverPhoto);
-    
-    // Redirect to the user's profile page (backend integration later)
-    navigate(`/userProfile/${userId}`);
+    setLoading(true);
+    setErrorMessage("");
+
+    try {
+      console.log(bio);
+      // Update bio if changed
+      if (bio !== user.preference?.bio) {
+        const bioResponse = await fetch("http://localhost:3000/preference/bio", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ bio }),
+        });
+
+        if (!bioResponse.ok) {
+          throw new Error("Failed to update bio");
+        }
+      }
+
+      // Update profile picture if changed
+      if (selectedProfileFile) {
+        const formData = new FormData();
+        formData.append("file", selectedProfileFile);
+
+        const pfpResponse = await fetch("http://localhost:3000/preference/pfp", {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+
+        if (!pfpResponse.ok) {
+          throw new Error("Failed to update profile picture");
+        }
+      }
+
+      // Refresh user data in context
+      const userResponse = await fetch("http://localhost:3000/users/myprofile", {
+        credentials: "include",
+      });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setUser(userData.myinfo);
+      }
+
+      // Redirect to profile page
+      navigate(`/userProfile/${user._id}`);
+    } catch (error) {
+      console.error("Update error:", error);
+      setErrorMessage(error.message || "Failed to update profile");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handle Cancel (Redirects to Profile Page)
   const handleCancel = () => {
-    navigate(`/userProfile/${userId}`);
+    navigate(`/userProfile/${user._id}`);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#2B1D14] text-white">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full min-h-screen flex flex-col items-center bg-[#2B1D14] text-white p-4">
-      {/* Cover Photo */}
-      <div className="w-full max-w-3xl relative">
-        <div className="w-full h-[40vh] md:h-[50vh] overflow-hidden rounded-2xl shadow-md bg-black flex items-center justify-center">
-          <label htmlFor="cover-photo" className="cursor-pointer relative">
-            <img
-              src={coverPhoto}
-              alt="Cover"
-              className="w-full h-auto object-cover"
-            />
-            <LuImagePlus
-              fontSize={25}
-              className="absolute right-4 bottom-4 text-white cursor-pointer"
-            />
-          </label>
-          <input
-            type="file"
-            id="cover-photo"
-            className="hidden"
-            accept="image/*"
-            onChange={(e) => handleImageUpload(e, "cover")}
-          />
-        </div>
-
-        {/* Profile Picture */}
-        <div className="absolute bottom-[-3rem] left-1/2 transform -translate-x-1/2">
+      {/* Profile Picture */}
+      <div className="w-full max-w-3xl relative mt-8">
+        <div className="flex justify-center">
           <label htmlFor="profile-photo" className="cursor-pointer relative">
             <img
               src={profilePic}
@@ -96,66 +165,59 @@ function EditProfilePage() {
             id="profile-photo"
             className="hidden"
             accept="image/*"
-            onChange={(e) => handleImageUpload(e, "profile")}
+            onChange={handleProfileUpload}
           />
         </div>
       </div>
 
       {/* Edit Form */}
-      <form onSubmit={handleSubmit} className="mt-20 w-full max-w-3xl bg-[#1f1410] p-6 rounded-lg shadow-md">
-        {/* Name Input */}
-        <div className="mb-4">
-          <label className="block text-gray-300 text-sm mb-2">Name</label>
-          <input
-            type="text"
-            name="name"
-            value={userData.name}
-            onChange={handleChange}
-            className="w-full bg-gray-900 text-white p-2 rounded-md border border-gray-700 outline-none focus:border-gray-500"
-            placeholder="Enter your name"
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="mt-8 w-full max-w-3xl bg-[#1f1410] p-6 rounded-lg shadow-md">
+        {errorMessage && (
+          <p className="text-red-500 text-center mb-4">{errorMessage}</p>
+        )}
 
         {/* Bio Input */}
-        <div className="mb-4">
-          <label className="block text-gray-300 text-sm mb-2">Bio</label>
-          <textarea
-            name="bio"
-            value={userData.bio}
-            onChange={handleChange}
-            className="w-full bg-gray-900 text-white p-2 rounded-md border border-gray-700 outline-none focus:border-gray-500"
-            placeholder="Tell us about yourself..."
-            rows="3"
-          ></textarea>
-        </div>
-
-        {/* Interests Input */}
-        <div className="mb-4">
-          <label className="block text-gray-300 text-sm mb-2">Favorite Books (comma separated)</label>
-          <input
-            type="text"
-            name="interests"
-            value={userData.interests}
-            onChange={handleChange}
-            className="w-full bg-gray-900 text-white p-2 rounded-md border border-gray-700 outline-none focus:border-gray-500"
-            placeholder="e.g. 1984, The Great Gatsby, To Kill a Mockingbird"
-          />
-        </div>
+<div className="mb-4">
+  <div className="flex justify-between items-center mb-2">
+    <label className="block text-gray-300 text-sm">Bio</label>
+    <span className={`text-xs ${bio.length > 50 ? 'text-red-500' : 'text-gray-400'}`}>
+      {bio.length}/50
+    </span>
+  </div>
+  <textarea
+    name="bio"
+    value={bio}
+    maxLength={50}
+    onChange={(e) => {
+      if (e.target.value.length <= 50) {
+        setBio(e.target.value);
+      }
+    }}
+    className="w-full bg-gray-900 text-white p-2 rounded-md border border-gray-700 outline-none focus:ring-2 focus:ring-[#795548]"
+    placeholder="Tell us about yourself..."
+    rows="3"
+  ></textarea>
+  {bio.length >= 50 && (
+    <p className="text-red-500 text-xs mt-1">Maximum 50 characters reached</p>
+  )}
+</div>
 
         {/* Buttons */}
         <div className="flex justify-between mt-6">
           <button
             type="button"
             onClick={handleCancel}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md"
+            disabled={loading}
+            className="px-4 py-2 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-green-700 hover:bg-green-600 rounded-md"
+            disabled={loading}
+            className="px-4 py-2 bg-[#795548] text-white font-bold rounded-lg hover:bg-[#8D6E63] transition disabled:opacity-50"
           >
-            Save Changes
+            {loading ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </form>

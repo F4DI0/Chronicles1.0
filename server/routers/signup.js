@@ -32,9 +32,9 @@ router.post('/create', async (req, res) => {
             res.status(400).json({ error: "passwords don't match" });
             return;
         }
-
+        const lowercaseEmail = email.toLowerCase();
         //check password's pattern todo
-        const stat = await usermodel.findOne({ email: email });
+        const stat = await usermodel.findOne({ email: lowercaseEmail });
         if (stat) {
             res.status(400).json({ error: "email is already in use" });
             return;
@@ -47,7 +47,7 @@ router.post('/create', async (req, res) => {
             firstname,
             lastname,
             username,
-            email,
+            email: lowercaseEmail,
             password: hashedpassword,
             isWriter: false
         })
@@ -106,7 +106,8 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const usermodel = mongoose.model('users', UserSchema);
-        const user = await usermodel.findOne({ email: email });
+        const lowercaseEmail = email.toLowerCase();
+        const user = await usermodel.findOne({ email: lowercaseEmail });
         if (!user) {
             res.status(401).json({ error: 'invalid email/password' });
             return;

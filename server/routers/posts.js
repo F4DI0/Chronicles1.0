@@ -9,6 +9,9 @@ const { PostSchema } = require('../schemas/post');
 const { UserSchema } = require('../schemas/user');
 const { postseenSchema } = require('../schemas/postseen');
 const { getGfsBucketPromise } = require('../utilities/gfbucket');
+const { notificationSchema } = require('../schemas/notification');
+const { unseenNotificationSchema } = require('../schemas/notificationUnseen');
+const { adminusersSchema } = require("../schemas/adminusers");
 
 const router = express.Router();
 
@@ -23,6 +26,7 @@ router.get('/getall', async (req, res) => {
     const plainposts = await postmodel.find({}).populate('author', 'username');
     const allposts = plainposts.map(post => post.toObject());
     for (let i = 0; i < allposts.length; i++) {
+      allposts[i].repostcount = await postmodel.countDocuments({repostid: allposts[i]});
       allposts[i].comments = await commentmodel.find({ postid: allposts[i]._id }).populate('author', 'username');
     }
     res.status(200).json(allposts);
@@ -105,6 +109,8 @@ router.get('/:id', isLoggedIn, async (req, res) => {
       return res.status(404).json({ error: "Post not found" });
     }
 
+    const repostCount = await postmodel.countDocuments({repostid: post});
+
     // Find the user
     const user = await usermodel.findOne({ _id: req.session.login });
     if (!user) {
@@ -126,6 +132,7 @@ router.get('/:id', isLoggedIn, async (req, res) => {
       comments,
       isLiked: !!isliked,
       likesCount,
+      repostCount,
     };
 
     res.status(200).json(response);
@@ -137,26 +144,45 @@ router.get('/:id', isLoggedIn, async (req, res) => {
 
 router.delete('/:id', isLoggedIn, async (req, res) => {
   try {
-    const postmodel = mongoose.model('posts', PostSchema);
-    const commentmodel = mongoose.model('comments', CommentSchema);
-    const seenpostsmodel = mongoose.model("seenposts", postseenSchema);
-    const found = await postmodel.findOne({ _id: req.params.id, author: req.session.login });
-    const gfbucket = await getGfsBucketPromise;
-    if (found) {
-      if (found.fileurl)
-        await gfbucket.delete(new mongoose.Types.ObjectId(found.fileurl.split('/')[1]));
-      await commentmodel.deleteMany({ postid: found });
-      await seenpostsmodel.deleteMany({ postid: found });
-      await postmodel.deleteOne({ _id: req.params.id, author: req.session.login });
-      res.status(200).json({ message: "success" });
-    } else {
-      res.status(400).json({ error: "Post was not found" });
-    }
+      if (!mongoose.Types.ObjectId.isValid(req.params.id))
+          return res.status(400).json({ error: "the post id is invalid" });
+      const postmodel = mongoose.model('posts', PostSchema);
+      const commentmodel = mongoose.model('comments', CommentSchema);
+      const seenpostsmodel = mongoose.model("seenposts", postseenSchema);
+      const adminmodel = mongoose.model('adminusers', adminusersSchema);
+
+      const found = await postmodel.findOne({ _id: req.params.id, author: req.session.login });
+      const isadmin = await adminmodel.findOne({ author: req.session.login });
+
+      const gfbucket = await getGfsBucketPromise;
+      if (found) {
+          if (found.fileurl)
+              await gfbucket.delete(new mongoose.Types.ObjectId(found.fileurl.split('/')[1]));
+          await commentmodel.deleteMany({ postid: found });
+          await seenpostsmodel.deleteMany({ postid: found });
+          await postmodel.deleteMany({ repostid: found });
+          await postmodel.deleteOne({ _id: req.params.id, author: req.session.login });
+
+          res.status(200).json({ message: "success" });
+      }
+      else if (isadmin) {
+          const thepost = await postmodel.findById(req.params.id);
+          if (thepost.fileurl)
+              await gfbucket.delete(new mongoose.Types.ObjectId(thepost.fileurl.split('/')[1]));
+          await commentmodel.deleteMany({ postid: thepost });
+          await seenpostsmodel.deleteMany({ postid: thepost });
+          await postmodel.deleteMany({ repostid: thepost });
+          await postmodel.deleteOne({ _id: req.params.id });
+      }
+      else
+          res.status(400).json({ error: "post was not found" });
+
   } catch (error) {
-    console.log('error', error);
-    res.status(400).json({ error });
+      console.log('error', error);
+      res.status(400).json({ error });
   }
-});
+
+})
 
 router.post('/upload', isLoggedIn, upload.single('file'), async (req, res) => {
   try {
@@ -197,85 +223,136 @@ router.post('/upload', isLoggedIn, upload.single('file'), async (req, res) => {
   }
 });
 
-router.post('/repost', isLoggedIn, async (req, res) => {
+router.post('/:postid/repost', isLoggedIn, async (req, res) => {
   try {
-    const { title, postid } = req.body;
-    const usermodel = new mongoose.model('users', UserSchema);
-    const user = await usermodel.findOne({ _id: req.session.login });
-    const postmodel = new mongoose.model('posts', PostSchema);
-    const repostedpost = await postmodel.findOne({ _id: postid });
-    const newpost = new postmodel({
-      author: user,
-      title,
-      date: new Date(),
-      fileurl: "",
-      posttype: "text",
-      repost: true,
-      repostid: repostedpost
-    });
-    await newpost.save();
-    res.status(200).json({ message: "success" });
+      const { title } = req.body;
+      const postid = req.params.postid;
+      if (!mongoose.Types.ObjectId.isValid(postid))
+          return res.status(400).json({ error: "the post id is invalid" });
+
+      const usermodel = mongoose.model('users', UserSchema);
+      const user = await usermodel.findOne({ _id: req.session.login });
+
+      const postmodel = mongoose.model('posts', PostSchema);
+      const repostedpost = await postmodel.findOne({ _id: postid });
+      if (!repostedpost)
+          return res.status(400).json({ error: "the post does not exist" });
+      const newpost = new postmodel({
+          author: user,
+          title,
+          date: new Date(),
+          fileurl: "",
+          posttype: "text",
+          repost: true,
+          repostid: repostedpost
+      })
+      await newpost.save();
+      res.status(200).json({ message: "success" });
+
   } catch (error) {
-    console.log('error', error);
-    res.status(400).json({ error });
+      console.log('error', error);
+      res.status(400).json({ error });
+  }
+})
+
+router.get('/:id', isLoggedIn, async (req, res) => {
+  try {
+    const postmodel = mongoose.model('posts', PostSchema);
+    const usermodel = mongoose.model('users', UserSchema);
+    
+    // Fetch user by the provided ID (from URL parameter)
+    const user = await usermodel.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Find posts that belong to this user
+    const posts = await postmodel.find({ author: user._id }).populate("author", "username email");
+    if (!posts) {
+      return res.status(404).json({ error: "No posts available" });
+    }
+
+    res.status(200).json(posts); // Return posts to the frontend
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    res.status(500).json({ error: "Failed to fetch posts" });
   }
 });
 
 router.post('/:id/like', isLoggedIn, async (req, res) => {
-    try {
-      const postmodel = mongoose.model('posts', PostSchema);
-      const likedmodel = mongoose.model("likes", LikeSchema);
-      const usermodel = mongoose.model("users", UserSchema);
-  
-      // Find the post
-      const post = await postmodel.findOne({ _id: req.params.id });
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-  
-      // Find the user
-      const user = await usermodel.findOne({ _id: req.session.login });
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-  
-      // Check if the post is already liked by the user
-      const isliked = await likedmodel.findOne({ author: user._id, postid: post._id });
-  
-      if (isliked) {
-        // Unlike the post
-        await likedmodel.deleteOne({ author: user._id, postid: post._id });
-  
-        // Calculate the new likesCount
-        const likesCount = await likedmodel.countDocuments({ postid: post._id });
-  
-        // Log the response
-        console.log("Post unliked:", {
-          likesCount,
-          isLiked: false,
-        });
-  
-        return res.status(200).json({ likesCount, isLiked: false });
-      } else {
-        // Like the post
-        const newlike = new likedmodel({ author: user._id, postid: post._id });
-        await newlike.save();
-  
-        // Calculate the new likesCount
-        const likesCount = await likedmodel.countDocuments({ postid: post._id });
-  
-        // Log the response
-        console.log("Post liked:", {
-          likesCount,
-          isLiked: true,
-        });
-  
-        return res.status(200).json({ likesCount, isLiked: true });
-      }
-    } catch (error) {
-      console.error("Error liking/unliking post:", error);
-      res.status(500).json({ error: "Failed to like/unlike post" });
+  try {
+    const postmodel = mongoose.model('posts', PostSchema);
+    const likedmodel = mongoose.model('likes', LikeSchema);
+    const usermodel = mongoose.model('users', UserSchema);
+    const notificationmodel = mongoose.model('notifications', notificationSchema);
+    const unseenNotifmodel = mongoose.model('unseennotifications', unseenNotificationSchema);
+
+    // Find the post
+    const post = await postmodel.findOne({ _id: req.params.id });
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
     }
-  });
+
+    // Find the user
+    const user = await usermodel.findOne({ _id: req.session.login });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if the post is already liked by the user
+    const isliked = await likedmodel.findOne({ author: user._id, postid: post._id });
+
+    if (isliked) {
+      // Unlike the post
+      await likedmodel.deleteOne({ author: user._id, postid: post._id });
+
+      // Delete the like notification
+      const oldNotification = await notificationmodel.findOne({
+        from_author: user._id,
+        notificationtype: 'like',
+        postid: post._id,
+      });
+
+      if (oldNotification) {
+        await unseenNotifmodel.deleteOne({ notificationid: oldNotification._id });
+        await notificationmodel.deleteOne({ _id: oldNotification._id });
+      }
+
+      // Calculate the new likesCount
+      const likesCount = await likedmodel.countDocuments({ postid: post._id });
+
+      return res.status(200).json({ likesCount, isLiked: false });
+    } else {
+      // Like the post
+      const newlike = new likedmodel({ author: user._id, postid: post._id });
+      await newlike.save();
+
+      // Create a new like notification
+      const newNotification = new notificationmodel({
+        for_author: post.author,
+        from_author: user._id,
+        notificationtype: 'like',
+        postid: post._id,
+        date: new Date(),
+      });
+      await newNotification.save();
+
+      // Add the notification to the unseen notifications
+      const newUnseenNotification = new unseenNotifmodel({
+        for_author: post.author,
+        notificationid: newNotification._id,
+      });
+      await newUnseenNotification.save();
+
+      // Calculate the new likesCount
+      const likesCount = await likedmodel.countDocuments({ postid: post._id });
+
+      return res.status(200).json({ likesCount, isLiked: true });
+    }
+  } catch (error) {
+    console.error("Error liking/unliking post:", error);
+    res.status(500).json({ error: "Failed to like/unlike post" });
+  }
+});
 
 module.exports.router = router;

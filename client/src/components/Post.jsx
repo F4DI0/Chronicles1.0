@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import SinglePost from "./SinglePost";
+import RepostPost from "./RepostPost"; // Import the RepostPost component
 
-function Post() {
+function Post({ onOpenPost }) {
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -9,17 +10,16 @@ function Post() {
     const fetchPosts = async () => {
       setIsLoading(true);
       try {
-        // Fetch posts from your backend
         const response = await fetch("http://localhost:3000/posts/getall", {
           method: "GET",
-          header: {
-            "contentType" : "application/json"
+          headers: {
+            "Content-Type": "application/json"
           }
         });
         const data = await response.json();
 
         if (response.ok) {
-          setPosts(data); // Update state with the fetched posts
+          setPosts(data);
         } else {
           console.error("Failed to fetch posts:", data.message);
         }
@@ -31,7 +31,7 @@ function Post() {
     };
 
     fetchPosts();
-  }, []); // Empty dependency array means this runs once when the component mounts
+  }, []);
 
   if (isLoading) {
     return (
@@ -51,11 +51,33 @@ function Post() {
   }
 
   return (
-    <div className="w-full lg:w-4/5 my-2 lg:px-3 py-2 flex items-center justify-center flex-col-reverse">
+    <div className="w-full lg:w-4/5 my-2 lg:px-3 py-2 ml-14 flex items-center justify-center flex-col-reverse">
       {posts.length > 0 ? (
-        posts.map((item) => (
-          <SinglePost key={item._id} postId={item._id} {...item} />
-        ))
+        posts.map((item) => {
+          if (item.repost) {
+            return (
+              <RepostPost
+                key={item._id}
+                repost={{
+                  ...item,
+                  repostData: {
+                    originalPostId: item.repostid // Assuming repostid contains the original post ID
+                  }
+                }}
+                onClick={() => onOpenPost(item._id)}
+              />
+            );
+          } else {
+            return (
+              <SinglePost
+                key={item._id}
+                postId={item._id}
+                {...item}
+                onClick={() => onOpenPost(item._id)}
+              />
+            );
+          }
+        })
       ) : (
         <p>No posts available</p>
       )}

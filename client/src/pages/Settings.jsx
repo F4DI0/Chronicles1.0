@@ -11,18 +11,6 @@ function Settings() {
     <div className="w-full lg:w-3/5 mx-auto bg-black text-white p-6 rounded-xl shadow-lg">
       <h2 className="text-2xl font-bold mb-4 text-center">Account Settings</h2>
 
-      {/* Profile Picture */}
-      <div className="flex flex-col items-center mb-6">
-        <img
-          src="/user.png"
-          alt="Profile"
-          className="w-24 h-24 rounded-full border-4 border-gray-500"
-        />
-        <button className="mt-2 text-sm text-blue-400 hover:underline cursor-pointer">
-          Change Profile Picture
-        </button>
-      </div>
-
       {/* Edit Personal Information */}
       <div className="mb-4">
         <label className="block text-sm mb-1">Username</label>
@@ -44,16 +32,6 @@ function Settings() {
           disabled // Email is not editable
         />
         <p className="text-gray-400 text-xs">Email cannot be changed.</p>
-      </div>
-
-      <div className="mb-4">
-        <label className="block text-sm mb-1">Bio</label>
-        <textarea
-          className="w-full p-2 rounded-md bg-gray-800 border border-gray-600 text-white"
-          rows="3"
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-        />
       </div>
 
       {/* Change Password */}

@@ -30,6 +30,7 @@ const PostSchema = new mongoose.Schema({
     },
     repostid: {
         type: mongoose.Schema.Types.ObjectId,
+        ref: 'posts',
     }
 })
 
